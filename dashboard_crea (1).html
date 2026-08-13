@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seguimiento de Cupos — CREA</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f6f7fb; --surface: #ffffff; --surface-soft: #f9fafb; --border: #e5e7eb;
+      --text: #111827; --text-muted: #6b7280; --text-soft: #9ca3af;
+      --primary: #2563eb; --primary-soft: #dbeafe; --primary-dark: #1e40af;
+      --success: #16a34a; --success-soft: #dcfce7;
+      --warning: #f59e0b; --warning-soft: #fef3c7;
+      --danger: #dc2626; --danger-soft: #fee2e2;
+      --info: #0891b2; --info-soft: #cffafe;
+      --green: var(--success); --yellow: var(--warning); --red: var(--danger); --blue: var(--primary);
+      --progress-low: #ef4444; --progress-mid: #f59e0b; --progress-good: #22c55e; --progress-bg: #e5e7eb;
+      --radius: 14px; --shadow: 0 2px 8px rgba(15,23,42,.08); --shadow-hover: 0 8px 24px rgba(15,23,42,.12);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* Header */
+    .app-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 18px 32px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; flex-wrap: wrap; gap: 10px; }
+    .app-header h1 { font-size: 1.25rem; font-weight: 700; }
+    .app-header p { font-size: .8rem; color: var(--text-muted); margin-top: 2px; }
+    .header-badge { background: #f3f4f6; border: 1px solid var(--border); border-radius: 8px; padding: 8px 16px; font-size: .82rem; color: var(--text-muted); }
+    .header-badge strong { font-size: 1.3rem; color: var(--text); }
+
+    /* Main */
+    .main-wrap { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+    /* Upload */
+    .upload-zone { background: var(--surface); border: 2px dashed var(--border); border-radius: var(--radius); padding: 56px 32px; text-align: center; transition: border-color .2s, background .2s; cursor: pointer; }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: var(--blue); background: #eff6ff; }
+    .upload-icon { font-size: 2.5rem; color: var(--text-muted); margin-bottom: 12px; }
+    .upload-zone h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; }
+    .upload-zone p { font-size: .85rem; color: var(--text-muted); margin-bottom: 20px; }
+    .btn-upload { background: var(--primary); color: #fff; border: none; border-radius: 8px; padding: 10px 24px; font-size: .9rem; font-weight: 500; cursor: pointer; transition: opacity .2s; }
+    .btn-upload:hover { opacity: .85; }
+
+    /* KPI */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
+    .kpi-label { font-size: .7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+    .kpi-value { font-size: 2rem; font-weight: 700; line-height: 1.1; margin: 6px 0 4px; }
+    .kpi-sub { font-size: .75rem; color: var(--text-muted); }
+    .kpi-danger { color: var(--red); } .kpi-warning { color: var(--yellow); } .kpi-success { color: var(--green); } .kpi-blue { color: var(--blue); } .kpi-dark { color: var(--text); }
+
+    /* Filters */
+    .filters-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; align-items: center; }
+    .filter-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 50px; padding: 6px 16px; font-size: .82rem; font-weight: 500; cursor: pointer; transition: all .15s; color: var(--text); }
+    .filter-btn.active, .filter-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .filter-select { border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: .82rem; background: var(--surface); color: var(--text); cursor: pointer; outline: none; }
+    .filter-select:focus { border-color: var(--blue); }
+    .chart-filters-bar { display: flex; gap: 10px; flex-wrap: wrap; margin: -4px 0 16px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); }
+    .chart-filters-bar .filter-select { font-size: .8rem; }
+    .chart-filters-bar .filter-btn { border-radius: 8px; padding: 6px 14px; font-size: .8rem; background: var(--surface-soft); color: var(--text-muted); }
+    .chart-filters-bar .filter-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* Psi Card */
+    .psi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; box-shadow: var(--shadow); overflow: hidden; transition: box-shadow .2s; }
+    .psi-card:hover { box-shadow: var(--shadow-hover); }
+    .psi-card-header { padding: 16px 20px; display: flex; align-items: center; gap: 14px; cursor: pointer; user-select: none; }
+    .psi-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+    .psi-info { flex: 1; min-width: 0; }
+    .psi-name { font-size: .95rem; font-weight: 600; }
+    .psi-meta { font-size: .75rem; color: var(--text-muted); margin-top: 2px; }
+    .badge-atencion { background: var(--danger-soft); color: var(--danger); border: 1px solid #fecaca; border-radius: 6px; padding: 3px 10px; font-size: .75rem; font-weight: 600; white-space: nowrap; }
+    .badge-ok { background: var(--success-soft); color: var(--success); border: 1px solid #bbf7d0; border-radius: 6px; padding: 3px 10px; font-size: .75rem; font-weight: 600; white-space: nowrap; }
+    .chevron { color: var(--text-muted); transition: transform .2s; font-size: 1rem; }
+    .psi-card.open .chevron { transform: rotate(180deg); }
+    .psi-card-note { padding: 8px 20px 12px; font-size: .75rem; color: var(--text-muted); background: #fafafa; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-style: italic; }
+
+    /* Mod table */
+    .mod-table-wrap { padding: 0 20px 20px; }
+    .mod-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .mod-table th { font-weight: 600; color: var(--text-muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; padding: 10px 8px 8px; border-bottom: 1px solid var(--border); text-align: right; }
+    .mod-table th:first-child { text-align: left; }
+    .mod-table td { padding: 10px 8px; border-bottom: 1px solid #f3f4f6; text-align: right; vertical-align: middle; }
+    .mod-table td:first-child { text-align: left; }
+    .mod-table tr:last-child td { border-bottom: none; }
+    .mod-badge { display: inline-block; padding: 2px 10px; border-radius: 50px; font-size: .72rem; font-weight: 500; }
+    .mod-badge.psi { background: #eff6ff; color: #2563eb; } .mod-badge.pp { background: #fdf4ff; color: #9333ea; }
+    .mod-badge.ra { background: #fff7ed; color: #c2410c; } .mod-badge.ex { background: #f0fdf4; color: #16a34a; }
+    .mod-badge.default { background: #f3f4f6; color: #374151; }
+    .progress-cell { min-width: 120px; }
+    .prog-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .prog-bar-bg { flex: 1; height: 6px; background: var(--progress-bg); border-radius: 99px; overflow: hidden; }
+    .prog-bar-fill { height: 100%; border-radius: 99px; transition: width .4s; }
+    .prog-pct { font-size: .78rem; font-weight: 600; min-width: 36px; text-align: right; }
+    .cupos-pill { display: inline-block; padding: 2px 10px; border-radius: 50px; font-size: .75rem; font-weight: 600; }
+    .cupos-pill.pos { background: var(--success-soft); color: var(--success); }
+    .cupos-pill.neg { background: var(--danger-soft); color: var(--danger); }
+    .cupos-pill.zero { background: #f3f4f6; color: var(--text-muted); }
+
+    /* Charts */
+    .charts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(480px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); min-height: 330px; }
+    .chart-card > div { width: 100%; min-height: 310px; }
+
+    /* Misc */
+    .section-title { font-size: .7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 14px; }
+    .file-info-bar { background: var(--info-soft); border: 1px solid #a5f3fc; border-radius: 8px; padding: 10px 16px; font-size: .8rem; color: var(--info); margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
+    .alert-msg { border-radius: var(--radius); font-size: .875rem; margin-bottom: 20px; padding: 12px 16px; }
+    .alert-warning { background: var(--warning-soft); color: #92400e; border: 1px solid #fcd34d; }
+    .alert-danger { background: var(--danger-soft); color: #991b1b; border: 1px solid #fca5a5; }
+
+    /* Loading */
+    #loadingOverlay { position: fixed; inset: 0; background: rgba(255,255,255,.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 16px; }
+    .spinner { width: 48px; height: 48px; border: 4px solid #e5e7eb; border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+      .app-header { padding: 14px 16px; }
+      .main-wrap { padding: 16px; }
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .charts-grid { grid-template-columns: 1fr; }
+      .mod-table-wrap { overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loadingOverlay" style="display:none;">
+  <div class="spinner"></div>
+  <div style="font-size:.95rem;color:var(--text-muted);font-weight:500;">Procesando archivo Excel…</div>
+</div>
+
+<!-- Header -->
+<header class="app-header">
+  <div>
+    <h1>Seguimiento de Cupos — CREA</h1>
+    <p>Ingresa el archivo Excel para ver el avance frente a la meta</p>
+  </div>
+  <div id="headerBadges" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
+</header>
+
+<!-- Main -->
+<main class="main-wrap">
+  <div id="alertContainer"></div>
+
+  <!-- Upload zone -->
+  <div id="uploadSection" style="max-width:560px;margin:60px auto;">
+    <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon"><i class="bi bi-file-earmark-spreadsheet"></i></div>
+      <h2>Sube tu archivo Excel</h2>
+      <p>El Excel debe contener las hojas <strong>Editable</strong> y <strong>Cupos</strong> con sus respectivas tablas.</p>
+      <button type="button" class="btn-upload"><i class="bi bi-upload me-2"></i>Seleccionar archivo .xlsx</button>
+      <p style="margin-top:12px;font-size:.75rem;" id="fileLabel">Ningún archivo seleccionado</p>
+      <input type="file" id="fileInput" accept=".xlsx" style="display:none" onchange="handleFileSelect(this)">
+    </div>
+  </div>
+
+  <!-- Dashboard (hidden until file loaded) -->
+  <div id="dashboardSection" style="display:none;">
+    <!-- File info -->
+    <div class="file-info-bar">
+      <i class="bi bi-file-earmark-check-fill"></i>
+      Archivo cargado: <strong id="fileNameDisplay"></strong>
+      &nbsp;·&nbsp;
+      <a href="#" onclick="resetDashboard();return false;" style="color:inherit;text-decoration:underline;">Cargar otro archivo</a>
+    </div>
+
+    <!-- KPIs -->
+    <p class="section-title">Resumen del equipo</p>
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <!-- Charts -->
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <p class="section-title mb-0">Gráficas del equipo</p>
+      <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" style="font-size:.75rem;font-weight:500;" onclick="clearChartFilters()">
+        <i class="bi bi-eraser me-1"></i>Borrar filtros
+      </button>
+    </div>
+    <div class="chart-filters-bar">
+      <select class="filter-select" id="chartFilterPsi" onchange="onChartFilterChange()"><option value="">Todas las psicólogas</option></select>
+      <select class="filter-select" id="chartFilterMod" onchange="onChartFilterChange()"><option value="">Todas las modalidades</option></select>
+      <select class="filter-select" id="chartFilterEstado" onchange="onChartFilterChange()">
+        <option value="">Todos los estados</option>
+        <option value="activo">Activo</option>
+        <option value="cerrado_atendido">Cerrado atendido</option>
+        <option value="cerrado_sin_atencion">Cerrado sin atención</option>
+        <option value="sin_asesoria">Sin asesoría</option>
+        <option value="con_asesoria">Con asesoría</option>
+        <option value="otro">Otro</option>
+      </select>
+      <button class="filter-btn" type="button" onclick="clearChartFilters()"><i class="bi bi-eraser me-1"></i>Borrar filtros de gráficas</button>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card"><div id="chartAvance"></div></div>
+      <div class="chart-card"><div id="chartEstados"></div></div>
+      <div class="chart-card"><div id="chartMeta"></div></div>
+      <div class="chart-card"><div id="chartModalidades"></div></div>
+    </div>
+
+    <!-- Psi filters -->
+    <div class="d-flex justify-content-between align-items-center mb-2 mt-2">
+      <p class="section-title mb-0">Psicólogas / Asesoras</p>
+      <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" style="font-size:.75rem;font-weight:500;" onclick="clearAllFilters()">
+        <i class="bi bi-eraser me-1"></i>Borrar filtros
+      </button>
+    </div>
+    <div class="filters-bar">
+      <button class="filter-btn active" data-type="all" onclick="filterCards('all',this)">Todas</button>
+      <button class="filter-btn" data-type="atencion" onclick="filterCards('atencion',this)">Con alerta</button>
+      <button class="filter-btn" data-type="ok" onclick="filterCards('ok',this)">Adelantadas</button>
+      <button class="filter-btn" data-type="cupos" onclick="filterCards('cupos',this)">Con cupos disponibles</button>
+      <select class="filter-select" id="filterPsi" onchange="applyFilters()"><option value="">— Psicóloga —</option></select>
+      <select class="filter-select" id="filterMod" onchange="applyFilters()"><option value="">— Modalidad —</option></select>
+    </div>
+
+    <!-- Cards container -->
+    <div id="psiCards"></div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════
+// CONSTANTES
+// ═══════════════════════════════════════════════
+const CHART_COLORS = ["#3b82f6","#f97316","#22c55e","#8b5cf6","#ec4899","#06b6d4","#eab308","#ef4444","#64748b","#84cc16"];
+const STATE_COLORS = { "Activo":"#3b82f6","Cerrado atendido":"#22c55e","Cerrado sin atención":"#64748b","Sin asesoría":"#f59e0b","Con asesoría":"#06b6d4","Otro":"#e2e8f0" };
+const ESTADO_LABELS = { activo:"\"Activo\"",cerrado_atendido:"Cerrado atendido",cerrado_sin_atencion:"Cerrado sin atención",sin_asesoria:"Sin asesoría",con_asesoria:"Con asesoría",otro:"Otro" };
+const ESTADO_LABELS2 = { activo:"Activo",cerrado_atendido:"Cerrado atendido",cerrado_sin_atencion:"Cerrado sin atención",sin_asesoria:"Sin asesoría",con_asesoria:"Con asesoría",otro:"Otro" };
+const TOTAL_WEEKS = 16;
+const SEMESTER_START = "2026-01-27";
+
+// Estado global
+let psiData = [], chartRecords = [], kpis = {};
+let chartState = { psicologa:"", modalidad:"", estado:"" };
+
+// ═══════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════
+function normalizeText(s) {
+  if (!s) return "";
+  return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
+}
+
+function normalizeId(val) {
+  if (val === null || val === undefined || val === "") return null;
+  const s = String(val).trim().replace(/\.0+$/, "").replace(/^0+(\d)/, "$1");
+  const n = parseInt(s, 10);
+  return isNaN(n) ? null : n;
+}
+
+function shortNameFirstLast(name) {
+  const p = String(name||"").trim().split(/\s+/);
+  if (p.length >= 3) return `${p[0]} ${p[2]}`;
+  if (p.length >= 2) return `${p[0]} ${p[1]}`;
+  return String(name||"").trim();
+}
+
+function shortModality(mod) {
+  const map = {
+    "Asesoría académica Explora tu carrera":"Explora",
+    "AAP Psicopedagógica":"Psicopedagógica",
+    "AAP Periodo de Prueba":"Periodo prueba",
+    "AAP Semestre de Recuperación Académica":"Recuperación",
+    "AAP RAISE":"RAISE"
+  };
+  return map[String(mod).trim()] || String(mod).trim();
+}
+
+function computeSemesterProgress() {
+  const start = new Date(SEMESTER_START);
+  const today = new Date();
+  const totalDays = TOTAL_WEEKS * 7;
+  let elapsed = Math.floor((today - start) / 86400000) + 1;
+  elapsed = Math.max(0, Math.min(elapsed, totalDays));
+  const currentWeek = elapsed === 0 ? 0 : Math.min(Math.floor((elapsed-1)/7)+1, TOTAL_WEEKS);
+  const pct = totalDays > 0 ? Math.round((elapsed/totalDays)*1000)/10 : 0;
+  return { currentWeek, totalWeeks: TOTAL_WEEKS, pct };
+}
+
+// ═══════════════════════════════════════════════
+// LECTURA EXCEL con SheetJS
+// ═══════════════════════════════════════════════
+function findCol(headers, patterns) {
+  for (const pat of patterns) {
+    const patN = normalizeText(pat);
+    for (const h of headers) {
+      if (normalizeText(h).includes(patN)) return h;
+    }
+  }
+  return null;
+}
+
+function sheetToRows(ws) {
+  const range = XLSX.utils.decode_range(ws['!ref'] || "A1");
+  const rows = [];
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    const row = [];
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const cell = ws[XLSX.utils.encode_cell({r,c})];
+      row.push(cell ? cell.v : null);
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
+function smartRead(ws, keyCols) {
+  const allRows = sheetToRows(ws);
+  for (let i = 0; i < Math.min(allRows.length, 15); i++) {
+    const rowVals = allRows[i].map(v => normalizeText(String(v||"")));
+    const hits = keyCols.filter(k => rowVals.some(rv => rv.includes(normalizeText(k)))).length;
+    if (hits >= Math.floor(keyCols.length / 2)) {
+      // Row i is the header
+      const headers = allRows[i].map(v => String(v||"").trim());
+      const data = [];
+      for (let r = i+1; r < allRows.length; r++) {
+        const row = allRows[r];
+        if (row.every(v => v === null || v === undefined || v === "")) continue;
+        const obj = {};
+        headers.forEach((h, idx) => { obj[h] = row[idx] !== undefined ? row[idx] : null; });
+        data.push(obj);
+      }
+      return { headers, data };
+    }
+  }
+  // Fallback: first row as header
+  const headers = allRows[0].map(v => String(v||"").trim());
+  const data = [];
+  for (let r = 1; r < allRows.length; r++) {
+    const row = allRows[r];
+    if (row.every(v => v === null || v === undefined || v === "")) continue;
+    const obj = {};
+    headers.forEach((h, idx) => { obj[h] = row[idx] !== undefined ? row[idx] : null; });
+    data.push(obj);
+  }
+  return { headers, data };
+}
+
+function extractSemesterDate(ws) {
+  // Read cell I1 (row=0, col=8)
+  const cell = ws[XLSX.utils.encode_cell({r:0, c:8})];
+  if (!cell || cell.v === null || cell.v === undefined) return null;
+  // Could be a JS Date or a serial number
+  if (cell.t === 'd' || cell.v instanceof Date) return cell.v;
+  if (typeof cell.v === 'number') {
+    // Excel serial date
+    return XLSX.SSF.parse_date_code(cell.v);
+  }
+  return null;
+}
+
+function classifyState(row) {
+  const estado = normalizeText(String(row.estado_asesoria||""));
+  const tuvo = normalizeText(String(row.tuvo_asesoria||""));
+  let nAs = 0;
+  try { nAs = parseFloat(String(row.num_asesorias||0).replace(",",".")); } catch(e) {}
+  if (isNaN(nAs)) nAs = 0;
+
+  const cerradoPalabras = ["terminado","cerrado","finalizado","cierre"];
+  const activoPalabras = ["activo","asignado","en proceso","en atencion","en atención","proceso","abierto","seguimiento"];
+
+  if (cerradoPalabras.some(p => estado.includes(p))) {
+    return nAs > 0 ? "cerrado_atendido" : "cerrado_sin_atencion";
+  }
+  if (activoPalabras.some(p => estado.includes(p))) return "activo";
+  if (tuvo.includes("no tuvo") || tuvo === "no") return "sin_asesoria";
+  if (nAs > 0) return "con_asesoria";
+  return "otro";
+}
+
+function cleanEditable(rawData, rawHeaders) {
+  const cm = {
+    id_asesor:       findCol(rawHeaders, ["ID del asesor","id del asesor"]),
+    nombre_asesor:   findCol(rawHeaders, ["Nombre del asesor"]),
+    modalidad:       findCol(rawHeaders, ["Modalidad de asesoría","Modalidad de asesoria"]),
+    submodalidad:    findCol(rawHeaders, ["Submodalidad"]),
+    estado_asesoria: findCol(rawHeaders, ["Estado de asesoría","Estado de asesoria"]),
+    num_asesorias:   findCol(rawHeaders, ["Número de asesorías","Numero de asesorias"]),
+    tuvo_asesoria:   findCol(rawHeaders, ["Tuvo asesoría","Tuvo asesoria"]),
+    alerta:          findCol(rawHeaders, ["Alerta"]),
+    alerta_final:    findCol(rawHeaders, ["Alerta Final"]),
+    fecha_cierre:    findCol(rawHeaders, ["Fecha de cierre"]),
+    id_estudiante:   findCol(rawHeaders, ["ID del estudiante"]),
+  };
+
+  const required = ["id_asesor","nombre_asesor","modalidad","estado_asesoria"];
+  for (const r of required) {
+    if (!cm[r]) throw new Error(`No se encontró la columna requerida '${r}' en la hoja Editable.`);
+  }
+
+  return rawData.map(row => {
+    const r = {
+      id_asesor: row[cm.id_asesor],
+      nombre_asesor: String(row[cm.nombre_asesor]||"").trim(),
+      modalidad: String(row[cm.modalidad]||"").trim(),
+      submodalidad: cm.submodalidad ? String(row[cm.submodalidad]||"").trim() : "",
+      estado_asesoria: String(row[cm.estado_asesoria]||"").trim(),
+      num_asesorias: cm.num_asesorias ? row[cm.num_asesorias] : 0,
+      tuvo_asesoria: cm.tuvo_asesoria ? row[cm.tuvo_asesoria] : "",
+      alerta: cm.alerta ? String(row[cm.alerta]||"Sin alerta") : "Sin alerta",
+      alerta_final: cm.alerta_final ? String(row[cm.alerta_final]||"Sin alerta") : "Sin alerta",
+    };
+    r.id_asesor_norm = normalizeId(r.id_asesor);
+    r.clasificacion = classifyState(r);
+    return r;
+  }).filter(r => r.nombre_asesor && r.nombre_asesor.toLowerCase() !== "nan");
+}
+
+function cleanCupos(rawData, rawHeaders) {
+  const cm = {
+    id_asesor: findCol(rawHeaders, ["ID Asesor","id asesor"]),
+    psicologo: findCol(rawHeaders, ["Psicólogo","Psicologo"]),
+    modalidad:  findCol(rawHeaders, ["Modalidad"]),
+    est_total:  findCol(rawHeaders, ["Estudiantes total"]),
+    cupos:      findCol(rawHeaders, ["Cupos asignados"]),
+    tipo_cupo:  findCol(rawHeaders, ["Columna1","Tipo","Variable"]),
+  };
+
+  const required = ["psicologo","modalidad","cupos"];
+  for (const r of required) {
+    if (!cm[r]) throw new Error(`No se encontró la columna '${r}' en la hoja Cupos.`);
+  }
+
+  // PASO 1: forward-fill psicologo e id_asesor ANTES de filtrar nada.
+  // Cuando aparece un nombre nuevo de psicólogo SIN id, es una persona distinta
+  // (ej: Ahixa aparece debajo de Christopher sin ID propio).
+  // Regla: si hay un nombre nuevo de psicólogo, se reinicia el ID a null.
+  let lastPsi = null, lastId = null;
+  const enriched = rawData.map(row => {
+    const rawPsi = cm.psicologo ? row[cm.psicologo] : null;
+    const rawId  = cm.id_asesor ? row[cm.id_asesor]  : null;
+    const psi    = rawPsi ? String(rawPsi).trim() : null;
+    const hasId  = rawId !== null && rawId !== undefined && String(rawId).trim() !== "";
+
+    if (psi && psi !== lastPsi) {
+      // Nuevo psicólogo detectado
+      lastPsi = psi;
+      // Si trae su propio ID lo usamos; si no, es alguien sin ID (no hereda el anterior)
+      lastId = hasId ? rawId : null;
+    } else if (hasId) {
+      // Misma persona, pero esta fila trae el ID (raro, pero seguro)
+      lastId = rawId;
+    }
+    // Si psi es null y no hay ID → continuamos con lastPsi/lastId (celdas fusionadas)
+
+    return { ...row, _psicologo: lastPsi, _id_asesor: lastId };
+  });
+
+  // PASO 2: filtrar filas vacías, totales y AAP RAISE, luego construir objetos
+  const rows = enriched.map(row => {
+    const psicologo = row._psicologo || "";
+    if (!psicologo || normalizeText(psicologo).includes("total")) return null;
+
+    const mod = String(row[cm.modalidad]||"").trim();
+    if (!mod) return null;
+    // Excluir AAP RAISE de los cupos (no cuenta para métricas)
+    if (normalizeText(mod).match(/aap\s*raise/)) return null;
+
+    const cupos    = parseInt(row[cm.cupos]||0, 10) || 0;
+    const est_total = cm.est_total ? (parseFloat(row[cm.est_total]) || null) : null;
+    const tipo_cupo = cm.tipo_cupo ? String(row[cm.tipo_cupo]||"Variable").trim() : "Variable";
+
+    return {
+      psicologo,
+      id_asesor_norm: normalizeId(row._id_asesor),
+      modalidad: mod,
+      cupos,
+      est_total,
+      tipo_cupo,
+    };
+  }).filter(Boolean);
+
+  return rows;
+}
+
+function computeMetrics(dfEd, dfCupos) {
+  const psicologas = [...new Set(dfCupos.map(r => r.psicologo))];
+  const results = [];
+
+  for (const psi of psicologas) {
+    const cuposPsi = dfCupos.filter(r => r.psicologo === psi);
+    const idsNorm = [...new Set(cuposPsi.map(r => r.id_asesor_norm).filter(x => x !== null))];
+    const idDisplay = idsNorm.length > 0 ? idsNorm[0] : "N/A";
+
+    // meta total
+    const metaTotalRow = cuposPsi.find(r => r.est_total !== null && r.est_total !== undefined);
+    const metaTotal = metaTotalRow ? Math.round(metaTotalRow.est_total) : 0;
+
+    // filter editable: primero por ID numérico; si no hay IDs válidos, por nombre
+    let edPsi;
+    if (idsNorm.length > 0) {
+      edPsi = dfEd.filter(r => idsNorm.includes(r.id_asesor_norm));
+      // Si el cruce por ID no trae registros, intentar por nombre como fallback
+      if (edPsi.length === 0) {
+        const psiN = normalizeText(psi);
+        edPsi = dfEd.filter(r => normalizeText(r.nombre_asesor) === psiN);
+      }
+    } else {
+      // Sin ID: buscar por nombre normalizado (coincidencia exacta o por palabras clave)
+      const psiN = normalizeText(psi);
+      const palabras = psiN.split(/\s+/).filter(w => w.length > 2);
+      edPsi = dfEd.filter(r => {
+        const rN = normalizeText(r.nombre_asesor);
+        return rN === psiN || palabras.every(w => rN.includes(w));
+      });
+    }
+
+    const totalEst   = edPsi.length;
+    const activos    = edPsi.filter(r => r.clasificacion === "activo").length;
+    const cerrAt     = edPsi.filter(r => r.clasificacion === "cerrado_atendido").length;
+    const cerrSin    = edPsi.filter(r => r.clasificacion === "cerrado_sin_atencion").length;
+    const sinAs      = edPsi.filter(r => r.clasificacion === "sin_asesoria").length;
+    const conAs      = edPsi.filter(r => r.clasificacion === "con_asesoria").length;
+    const alertAmar  = edPsi.filter(r => normalizeText(r.alerta).includes("amarill")).length;
+    const alertRoja  = edPsi.filter(r => /roja|rojo/.test(normalizeText(r.alerta))).length;
+    const alertFinal = edPsi.filter(r => /amarill|roja|rojo/.test(normalizeText(r.alerta_final))).length;
+
+    const avanceTotal = activos + cerrAt;
+    const cuposTotal  = cuposPsi.reduce((s,r) => s + r.cupos, 0);
+    const pctAvance   = cuposTotal > 0 ? Math.round((avanceTotal/cuposTotal)*1000)/10 : 0;
+
+    // per modalidad
+    const modalidadesData = cuposPsi.map(cupoRow => {
+      const mod = cupoRow.modalidad;
+      const metaMod = cupoRow.cupos;
+      const modN = normalizeText(mod).substring(0,15);
+      const edMod = edPsi.filter(r => normalizeText(r.modalidad).includes(modN));
+      const actM  = edMod.filter(r => r.clasificacion === "activo").length;
+      const catM  = edMod.filter(r => r.clasificacion === "cerrado_atendido").length;
+      const csinM = edMod.filter(r => r.clasificacion === "cerrado_sin_atencion").length;
+      const sinM  = edMod.filter(r => r.clasificacion === "sin_asesoria").length;
+      const avM   = actM + catM;
+      const pctM  = metaMod > 0 ? Math.round((avM/metaMod)*1000)/10 : 0;
+      const color = pctM < 30 ? "danger" : pctM < 70 ? "warning" : "success";
+      return { modalidad:mod, tipo_cupo:cupoRow.tipo_cupo, meta:metaMod, activos:actM, cerr_at:catM, cerr_sin:csinM, sin_as:sinM, avance:avM, pct_avance:pctM, cupos_disp:metaMod-avM, color };
+    });
+
+    const alertaGlobal = pctAvance < 30 ? "danger" : pctAvance < 70 ? "warning" : "success";
+    const requiereAtencion = pctAvance < 70;
+
+    const iniciales = psi.split(/\s+/).slice(0,2).map(w=>w[0]?.toUpperCase()||"").join("");
+    results.push({
+      nombre: psi, nombre_corto: shortNameFirstLast(psi), id_asesor: idDisplay, iniciales,
+      meta_total: metaTotal || cuposTotal, cupos_total: cuposTotal, total_est: totalEst,
+      activos, cerr_at: cerrAt, cerr_sin: cerrSin, sin_as: sinAs, con_as: conAs,
+      avance_total: avanceTotal, pct_avance: pctAvance, cupos_disp: cuposTotal - avanceTotal,
+      alertas_amarilla: alertAmar, alertas_roja: alertRoja, alertas_final: alertFinal,
+      modalidades: modalidadesData.length, modalidades_data: modalidadesData,
+      alerta_global: alertaGlobal, requiere_atencion: requiereAtencion,
+    });
+  }
+  return results;
+}
+
+function computeGlobalKpis(psiDataArr, semData) {
+  return {
+    total_psi:        psiDataArr.length,
+    total_cupos:      psiDataArr.reduce((s,p) => s+p.cupos_total, 0),
+    total_est:        psiDataArr.reduce((s,p) => s+p.total_est, 0),
+    total_activos:    psiDataArr.reduce((s,p) => s+p.activos, 0),
+    total_cerr:       psiDataArr.reduce((s,p) => s+p.cerr_at, 0),
+    total_sin:        psiDataArr.reduce((s,p) => s+p.sin_as, 0),
+    total_avance:     psiDataArr.reduce((s,p) => s+p.avance_total, 0),
+    pct_global:       (() => { const tc = psiDataArr.reduce((s,p)=>s+p.cupos_total,0); const ta=psiDataArr.reduce((s,p)=>s+p.avance_total,0); return tc>0?Math.round((ta/tc)*1000)/10:0; })(),
+    con_retraso:      psiDataArr.filter(p => p.requiere_atencion).length,
+    metas_alcanzadas: psiDataArr.filter(p => p.pct_avance >= 100).length,
+    sem_semanas:      semData.currentWeek,
+    sem_pct:          semData.pct,
+  };
+}
+
+function buildChartRecords(dfEd, psiDataArr) {
+  const psiNombresEnCupos = new Set(psiDataArr.map(p => p.nombre));
+  return dfEd.filter(row => {
+    const mod = normalizeText(row.modalidad);
+    if (mod.match(/aap\s*raise/)) return false;
+    // Solo incluir psicólogas que están en Cupos
+    if (!psiNombresEnCupos.has(row.nombre_asesor)) return false;
+    return true;
+  }).map(row => ({
+    psicologa:       row.nombre_asesor,
+    psicologa_corta: shortNameFirstLast(row.nombre_asesor),
+    modalidad:       row.modalidad || "Sin modalidad",
+    modalidad_corta: shortModality(row.modalidad || "Sin modalidad"),
+    estado:          row.clasificacion || "otro",
+    estado_label:    ESTADO_LABELS2[row.clasificacion] || "Otro",
+  }));
+}
+
+// ═══════════════════════════════════════════════
+// FILE HANDLING
+// ═══════════════════════════════════════════════
+function handleFileSelect(input) {
+  if (!input.files.length) return;
+  document.getElementById('fileLabel').textContent = input.files[0].name;
+  processExcel(input.files[0]);
+}
+
+function processExcel(file) {
+  document.getElementById('loadingOverlay').style.display = 'flex';
+  document.getElementById('alertContainer').innerHTML = '';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type:'array', cellDates:true });
+      const sheetNames = wb.SheetNames.map(s => s.trim());
+
+      if (!sheetNames.includes("Editable")) throw new Error("No se encontró la hoja 'Editable'.");
+      if (!sheetNames.includes("Cupos")) throw new Error("No se encontró la hoja 'Cupos'.");
+
+      const wsEd   = wb.Sheets["Editable"];
+      const wsCup  = wb.Sheets["Cupos"];
+
+      // Semester date from Cupos I1
+      let semData = computeSemesterProgress();
+
+      // Parse sheets
+      const edResult  = smartRead(wsEd,  ["ID del asesor","Nombre del asesor","Estado de asesoria","Modalidad de asesoria"]);
+      const cupResult = smartRead(wsCup, ["ID Asesor","Psicologo","Modalidad","Cupos asignados"]);
+
+      const dfEd    = cleanEditable(edResult.data, edResult.headers);
+      const dfCupos = cleanCupos(cupResult.data, cupResult.headers);
+
+      psiData      = computeMetrics(dfEd, dfCupos);
+      kpis         = computeGlobalKpis(psiData, semData);
+      chartRecords = buildChartRecords(dfEd, psiData);
+
+      renderDashboard(file.name);
+    } catch(err) {
+      document.getElementById('loadingOverlay').style.display = 'none';
+      showAlert("danger", `Error al procesar el archivo: ${err.message}`);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ═══════════════════════════════════════════════
+// RENDER DASHBOARD
+// ═══════════════════════════════════════════════
+function renderDashboard(filename) {
+  document.getElementById('uploadSection').style.display = 'none';
+  document.getElementById('dashboardSection').style.display = 'block';
+  document.getElementById('fileNameDisplay').textContent = filename;
+
+  // Header badges
+  const pct = kpis.pct_global;
+  document.getElementById('headerBadges').innerHTML = `
+    <div class="header-badge">Avance global &nbsp;·&nbsp; <strong>${pct}%</strong> &nbsp;·&nbsp; ${kpis.total_avance} / ${kpis.total_cupos}</div>
+    <div class="header-badge" style="background:var(--primary-soft);border-color:#93c5fd;color:var(--primary-dark);">
+      Semestre &nbsp;·&nbsp; <strong>${kpis.sem_pct}%</strong> &nbsp;·&nbsp; Semana ${kpis.sem_semanas} de 16
+    </div>`;
+
+  renderKPIs();
+  renderFilters();
+  renderCards();
+  renderAllCharts();
+
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+function renderKPIs() {
+  const k = kpis;
+  const pct = k.pct_global;
+  const colorClass = pct >= 70 ? 'kpi-success' : pct >= 30 ? 'kpi-warning' : 'kpi-danger';
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">Avance global</div><div class="kpi-value ${colorClass}">${pct}%</div><div class="kpi-sub">de la meta del semestre</div></div>
+    <div class="kpi-card"><div class="kpi-label">Atenciones / Meta</div><div class="kpi-value kpi-dark">${k.total_avance}</div><div class="kpi-sub">de ${k.total_cupos} cupos totales</div></div>
+    <div class="kpi-card"><div class="kpi-label">Estudiantes meta</div><div class="kpi-value kpi-dark">${k.total_est}</div><div class="kpi-sub">total equipo asignados</div></div>
+    <div class="kpi-card"><div class="kpi-label">Activos</div><div class="kpi-value kpi-blue">${k.total_activos}</div><div class="kpi-sub">en seguimiento</div></div>
+    <div class="kpi-card"><div class="kpi-label">Cerrados atendidos</div><div class="kpi-value kpi-success">${k.total_cerr}</div><div class="kpi-sub">cuentan para la meta</div></div>
+    <div class="kpi-card"><div class="kpi-label">Sin asesoría</div><div class="kpi-value kpi-warning">${k.total_sin}</div><div class="kpi-sub">no han recibido atención</div></div>`;
+}
+
+function renderFilters() {
+  const psiSel = document.getElementById('filterPsi');
+  const modSel = document.getElementById('filterMod');
+  const chartPsiSel = document.getElementById('chartFilterPsi');
+  const chartModSel = document.getElementById('chartFilterMod');
+
+  psiSel.innerHTML = '<option value="">— Psicóloga —</option>';
+  chartPsiSel.innerHTML = '<option value="">Todas las psicólogas</option>';
+  const nombres = psiData.map(p => ({ value: p.nombre, label: p.nombre_corto })).sort((a,b)=>a.label.localeCompare(b.label));
+  nombres.forEach(n => {
+    psiSel.innerHTML += `<option value="${escH(n.value)}">${escH(n.label)}</option>`;
+    chartPsiSel.innerHTML += `<option value="${escH(n.value)}">${escH(n.label)}</option>`;
+  });
+
+  const modalidades = [...new Set(psiData.flatMap(p => p.modalidades_data.map(m => m.modalidad)))].sort();
+  modSel.innerHTML = '<option value="">— Modalidad —</option>';
+  chartModSel.innerHTML = '<option value="">Todas las modalidades</option>';
+  modalidades.forEach(m => {
+    modSel.innerHTML += `<option value="${escH(m)}">${escH(m)}</option>`;
+    chartModSel.innerHTML += `<option value="${escH(m)}">${escH(m)}</option>`;
+  });
+}
+
+function escH(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+function modBadgeClass(mod) {
+  const m = mod.toLowerCase();
+  if (m.includes("psicopedagog")) return "psi";
+  if (m.includes("periodo") || m.includes("prueba")) return "pp";
+  if (m.includes("recuperac")) return "ra";
+  if (m.includes("explora") || m.includes("carrera")) return "ex";
+  return "default";
+}
+
+function progressColor(color) {
+  return color === "success" ? "var(--progress-good)" : color === "warning" ? "var(--progress-mid)" : "var(--progress-low)";
+}
+
+function renderCards() {
+  const container = document.getElementById('psiCards');
+  container.innerHTML = psiData.map((p, idx) => {
+    const pct = p.pct_avance;
+    const pctColor = pct >= 70 ? "var(--success)" : pct >= 30 ? "var(--warning)" : "var(--danger)";
+    const badge = p.requiere_atencion
+      ? `<span class="badge-atencion">Requiere atención</span>`
+      : `<span class="badge-ok"><i class="bi bi-check2"></i> Al día</span>`;
+
+    const modsHtml = p.modalidades_data.map(m => {
+      const bc = modBadgeClass(m.modalidad);
+      const pc = progressColor(m.color);
+      const pctW = Math.min(m.pct_avance, 100);
+      const cuposPill = m.cupos_disp > 0
+        ? `<span class="cupos-pill pos">+${m.cupos_disp} disp.</span>`
+        : m.cupos_disp < 0
+          ? `<span class="cupos-pill neg">${m.cupos_disp} extra</span>`
+          : `<span class="cupos-pill zero">Completo</span>`;
+      return `<tr data-mod="${escH(m.modalidad)}" data-cupos="${m.cupos_disp}" data-alerta="${m.color}">
+        <td><span class="mod-badge ${bc}">${escH(m.modalidad)}</span><br><span style="font-size:.7rem;color:var(--text-muted);">${escH(m.tipo_cupo)}</span></td>
+        <td><strong>${m.meta}</strong></td>
+        <td>${m.activos}</td>
+        <td>${m.cerr_at}</td>
+        <td style="color:var(--text-muted);">${m.cerr_sin}</td>
+        <td class="progress-cell"><div class="prog-bar-wrap"><div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${pctW}%;background:${pc}"></div></div><span class="prog-pct" style="color:${pc}">${m.pct_avance}%</span></div></td>
+        <td>${cuposPill}</td>
+      </tr>`;
+    }).join("");
+
+    const modsList = p.modalidades_data.map(m=>m.modalidad).join("|");
+
+    return `<div class="psi-card" data-nombre="${escH(p.nombre)}" data-alerta="${p.alerta_global}" data-cupos="${p.cupos_disp}" data-modalidades="${escH(modsList)}" id="psiCard${idx}">
+      <div class="psi-card-header" onclick="toggleCard('psiCard${idx}')">
+        <div class="psi-avatar">${escH(p.iniciales)}</div>
+        <div class="psi-info">
+          <div class="psi-name">${escH(p.nombre_corto)}</div>
+          <div class="psi-meta">ID ${p.id_asesor} · Meta: ${p.cupos_total} estudiantes · ${p.modalidades} modalidades</div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <div style="text-align:right;margin-right:8px;">
+            <div style="font-size:.7rem;color:var(--text-muted);">Avance</div>
+            <div style="font-size:1rem;font-weight:700;color:${pctColor}">${pct}%</div>
+          </div>
+          ${badge}
+          <i class="bi bi-chevron-down chevron"></i>
+        </div>
+      </div>
+      <div class="psi-body" style="display:none;">
+        <div class="psi-card-note">Activos + cerrados atendidos cuentan para la meta. Los cerrados sin atención solo se registran.</div>
+        <div class="d-flex flex-wrap gap-3 px-4 py-3" style="font-size:.78rem;border-bottom:1px solid var(--border);background:#fafafa;">
+          <span><i class="bi bi-person-fill text-primary me-1"></i><strong>${p.activos}</strong> activos</span>
+          <span><i class="bi bi-check-circle-fill text-success me-1"></i><strong>${p.cerr_at}</strong> cerrados con at.</span>
+          <span><i class="bi bi-x-circle text-secondary me-1"></i><strong>${p.cerr_sin}</strong> cerrados sin at.</span>
+          <span><i class="bi bi-slash-circle text-warning me-1"></i><strong>${p.sin_as}</strong> sin asesoría</span>
+          <span><i class="bi bi-exclamation-triangle text-warning me-1"></i><strong>${p.alertas_amarilla}</strong> alerta amarilla</span>
+          <span><i class="bi bi-exclamation-triangle-fill text-danger me-1"></i><strong>${p.alertas_roja}</strong> alerta roja</span>
+        </div>
+        <div class="mod-table-wrap">
+          <table class="mod-table">
+            <thead><tr><th>Modalidad</th><th>Meta</th><th>Activos</th><th>Cerrados at.</th><th>Cerr. sin at.*</th><th class="progress-cell">Avance</th><th>Cupos</th></tr></thead>
+            <tbody>${modsHtml}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ═══════════════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════════════
+const chartConfig = { responsive:true, displayModeBar:false };
+
+function getFilteredRecords() {
+  return chartRecords.filter(r => {
+    if (chartState.psicologa && r.psicologa !== chartState.psicologa) return false;
+    if (chartState.modalidad && r.modalidad !== chartState.modalidad) return false;
+    if (chartState.estado && r.estado !== chartState.estado) return false;
+    return true;
+  });
+}
+
+function getFilteredPsiSummary() {
+  const records = getFilteredRecords();
+  const psisConRegistros = new Set(records.map(r => r.psicologa));
+
+  return psiData.filter(p => {
+    if (chartState.psicologa && p.nombre !== chartState.psicologa) return false;
+    if ((chartState.modalidad || chartState.estado) && !psisConRegistros.has(p.nombre)) return false;
+    return true;
+  }).map(p => {
+    const mods = chartState.modalidad ? p.modalidades_data.filter(m => m.modalidad === chartState.modalidad) : p.modalidades_data;
+    const cupos_total = mods.reduce((s,m) => s+Number(m.meta||0), 0);
+    let activos=0, cerr_at=0, cerr_sin=0, sin_as=0;
+    mods.forEach(m => { activos+=Number(m.activos||0); cerr_at+=Number(m.cerr_at||0); cerr_sin+=Number(m.cerr_sin||0); sin_as+=Number(m.sin_as||0); });
+    let avance = activos + cerr_at;
+    if (chartState.estado) {
+      if (chartState.estado === "activo") avance = activos;
+      else if (chartState.estado === "cerrado_atendido") avance = cerr_at;
+      else if (chartState.estado === "cerrado_sin_atencion") avance = cerr_sin;
+      else if (chartState.estado === "sin_asesoria") avance = sin_as;
+      else avance = records.filter(r => r.psicologa === p.nombre && r.estado === chartState.estado).length;
+    }
+    const pct = cupos_total > 0 ? Math.round((avance/cupos_total)*1000)/10 : 0;
+    return { psicologa:p.nombre, psicologa_corta:p.nombre_corto, cupos_total, avance_total:avance, pct_avance:pct, activos, cerr_at, cerr_sin, sin_as };
+  });
+}
+
+function renderAllCharts() {
+  const records = getFilteredRecords();
+  const summary = getFilteredPsiSummary();
+  updateChartAvance(summary);
+  updateChartMeta(summary);
+  updateChartEstados(records);
+  updateChartModalidades(records);
+  attachChartClickEvents();
+}
+
+function updateChartAvance(summary) {
+  const nombres = summary.map(p => p.psicologa_corta);
+  const valores = summary.map(p => Number(p.pct_avance||0));
+  const colors  = valores.map(v => v>=70?"#22c55e":v>=30?"#f59e0b":"#ef4444");
+  Plotly.react('chartAvance', [{ type:"bar", orientation:"h", x:valores, y:nombres, customdata:summary.map(p=>p.psicologa), marker:{color:colors}, text:valores.map(v=>`${v}%`), textposition:"outside", cliponaxis:false, hovertemplate:"%{y}<br>Avance: %{x}%<extra></extra>" }],
+    { title:{text:"Avance por psicóloga (%)",font:{size:14}}, height:320, margin:{l:120,r:35,t:40,b:35}, plot_bgcolor:"rgba(0,0,0,0)", paper_bgcolor:"rgba(0,0,0,0)", font:{size:10,color:"#374151"}, xaxis:{range:[0,115],automargin:true}, yaxis:{automargin:true} }, chartConfig);
+}
+
+function updateChartMeta(summary) {
+  const nombres = summary.map(p => p.psicologa_corta);
+  Plotly.react('chartMeta', [
+    { type:"bar", name:"Meta", x:nombres, y:summary.map(p=>Number(p.cupos_total||0)), customdata:summary.map(p=>p.psicologa), marker:{color:"#e2e8f0"}, hovertemplate:"%{x}<br>Meta: %{y}<extra></extra>" },
+    { type:"bar", name:"Avance real", x:nombres, y:summary.map(p=>Number(p.avance_total||0)), customdata:summary.map(p=>p.psicologa), marker:{color:"#3b82f6"}, hovertemplate:"%{x}<br>Avance real: %{y}<extra></extra>" }
+  ], { title:{text:"Meta vs Avance por psicóloga",font:{size:14}}, barmode:"overlay", height:320, margin:{l:40,r:20,t:40,b:90}, plot_bgcolor:"rgba(0,0,0,0)", paper_bgcolor:"rgba(0,0,0,0)", font:{size:10,color:"#374151"}, legend:{orientation:"h",yanchor:"bottom",y:1.02,xanchor:"right",x:1,font:{size:9}}, xaxis:{tickangle:-35,tickfont:{size:9},automargin:true}, yaxis:{rangemode:"tozero",automargin:true} }, chartConfig);
+}
+
+function updateChartEstados(records) {
+  const counts = {};
+  records.forEach(r => { const l = r.estado_label||"Otro"; counts[l]=(counts[l]||0)+1; });
+  let labels = Object.keys(counts), values = Object.values(counts);
+  if (!labels.length) { labels=["Sin datos"]; values=[1]; }
+  Plotly.react('chartEstados', [{ type:"pie", labels, values, hole:0.45, textinfo:"percent", textposition:"inside", insidetextorientation:"radial", domain:{x:[0.08,0.92],y:[0.18,0.95]}, marker:{colors:labels.map(l=>STATE_COLORS[l]||"#94a3b8")}, hovertemplate:"%{label}: %{value}<extra></extra>" }],
+    { title:{text:"Distribución de estados",font:{size:14}}, height:320, margin:{l:10,r:10,t:40,b:95}, paper_bgcolor:"rgba(0,0,0,0)", font:{size:10,color:"#374151"}, legend:{orientation:"h",yanchor:"top",y:-0.12,xanchor:"center",x:0.5,font:{size:9},itemwidth:40} }, chartConfig);
+}
+
+function updateChartModalidades(records) {
+  // Solo psicólogas que están en la tabla Cupos (psiData)
+  const psiNombresEnCupos = new Set(psiData.map(p => p.nombre));
+  const recordsFiltrados = records.filter(r => psiNombresEnCupos.has(r.psicologa));
+  const psicologas = [...new Set(recordsFiltrados.map(r => r.psicologa).filter(Boolean))];
+  const modalidades = [...new Set(recordsFiltrados.map(r => r.modalidad).filter(Boolean))];
+  const traces = modalidades.map((mod, idx) => {
+    const y = psicologas.map(psi => recordsFiltrados.filter(r => r.psicologa===psi && r.modalidad===mod).length);
+    if (!y.some(v=>v>0)) return null;
+    return { type:"bar", name:shortModality(mod), x:psicologas.map(psi => { const f=psiData.find(p=>p.nombre===psi); return f?f.nombre_corto:shortNameFirstLast(psi); }), y, marker:{color:CHART_COLORS[idx%CHART_COLORS.length]}, hovertemplate:`%{x}<br>${shortModality(mod)}: %{y}<extra></extra>` };
+  }).filter(Boolean);
+  Plotly.react("chartModalidades", traces.length?traces:[{type:"bar",x:[],y:[]}],
+    { title:{text:"Atenciones por Modalidad y Psicóloga",font:{size:14}}, barmode:"stack", height:320, margin:{l:35,r:20,t:40,b:120}, plot_bgcolor:"rgba(0,0,0,0)", paper_bgcolor:"rgba(0,0,0,0)", font:{size:10,color:"#374151"}, legend:{orientation:"h",yanchor:"top",y:-0.32,xanchor:"center",x:0.5,font:{size:9},itemwidth:30}, xaxis:{tickangle:-35,tickfont:{size:9},automargin:true}, yaxis:{automargin:true,tickfont:{size:10},rangemode:"tozero"} }, chartConfig);
+}
+
+function attachChartClickEvents() {
+  const av = document.getElementById('chartAvance');
+  const me = document.getElementById('chartMeta');
+  const es = document.getElementById('chartEstados');
+  const mo = document.getElementById('chartModalidades');
+
+  if (av) {
+    av.removeAllListeners && av.removeAllListeners('plotly_click');
+    av.on('plotly_click', d => { const pt=d.points[0]; if(pt){chartState.psicologa=pt.customdata||"";syncChartFilterControls();renderAllCharts();} });
+  }
+  if (me) {
+    me.removeAllListeners && me.removeAllListeners('plotly_click');
+    me.on('plotly_click', d => { const pt=d.points[0]; if(pt){chartState.psicologa=pt.customdata||"";syncChartFilterControls();renderAllCharts();} });
+  }
+  if (es) {
+    es.removeAllListeners && es.removeAllListeners('plotly_click');
+    es.on('plotly_click', d => { const pt=d.points[0]; if(pt){ const map={"Activo":"activo","Cerrado atendido":"cerrado_atendido","Cerrado sin atención":"cerrado_sin_atencion","Sin asesoría":"sin_asesoria","Con asesoría":"con_asesoria","Otro":"otro"}; chartState.estado=map[pt.label]||"";syncChartFilterControls();renderAllCharts();} });
+  }
+  if (mo) {
+    mo.removeAllListeners && mo.removeAllListeners('plotly_click');
+    mo.on('plotly_click', d => { const pt=d.points[0]; if(pt && pt.data){ const psiCorto=pt.x; const found=psiData.find(p=>p.nombre_corto===psiCorto); if(found)chartState.psicologa=found.nombre; syncChartFilterControls();renderAllCharts();} });
+  }
+}
+
+function syncChartFilterControls() {
+  const p=document.getElementById('chartFilterPsi'), m=document.getElementById('chartFilterMod'), e=document.getElementById('chartFilterEstado');
+  if(p)p.value=chartState.psicologa||"";
+  if(m)m.value=chartState.modalidad||"";
+  if(e)e.value=chartState.estado||"";
+}
+
+function onChartFilterChange() {
+  chartState.psicologa = document.getElementById('chartFilterPsi')?.value||"";
+  chartState.modalidad = document.getElementById('chartFilterMod')?.value||"";
+  chartState.estado    = document.getElementById('chartFilterEstado')?.value||"";
+  renderAllCharts();
+}
+
+function clearChartFilters() {
+  chartState = { psicologa:"", modalidad:"", estado:"" };
+  syncChartFilterControls();
+  renderAllCharts();
+}
+
+// ═══════════════════════════════════════════════
+// CARD FILTERS
+// ═══════════════════════════════════════════════
+function toggleCard(id) {
+  const card = document.getElementById(id);
+  const body = card.querySelector('.psi-body');
+  const open = body.style.display !== 'none' && body.style.display !== '';
+  body.style.display = open ? 'none' : 'block';
+  card.classList.toggle('open', !open);
+}
+
+function applyFilters() {
+  const activeBtns = Array.from(document.querySelectorAll('.filter-btn.active')).map(b => b.dataset.type);
+  const psiVal = document.getElementById('filterPsi').value;
+  const modVal = document.getElementById('filterMod').value;
+
+  document.querySelectorAll('.psi-card').forEach(card => {
+    const psiNombre   = card.dataset.nombre;
+    const cardAlerta  = card.dataset.alerta;
+    const cardCupos   = parseInt(card.dataset.cupos, 10);
+    const cardMods    = (card.dataset.modalidades||"").split("|");
+
+    let showCard = true;
+
+    if (activeBtns.includes('atencion') && cardAlerta === 'success') showCard = false;
+    if (activeBtns.includes('ok') && cardAlerta !== 'success') showCard = false;
+    if (activeBtns.includes('cupos') && cardCupos <= 0) showCard = false;
+    if (psiVal && psiNombre !== psiVal) showCard = false;
+    if (modVal && !cardMods.includes(modVal)) showCard = false;
+
+    // Filter rows
+    let hasVisibleRows = false;
+    card.querySelectorAll('tbody tr').forEach(row => {
+      const rowMod    = row.dataset.mod;
+      const rowCupos  = parseInt(row.dataset.cupos, 10);
+      const rowAlerta = row.dataset.alerta;
+      let showRow = true;
+      if (activeBtns.includes('atencion') && rowAlerta === 'success') showRow = false;
+      if (activeBtns.includes('ok') && rowAlerta !== 'success') showRow = false;
+      if (activeBtns.includes('cupos') && rowCupos <= 0) showRow = false;
+      if (modVal && rowMod !== modVal) showRow = false;
+      row.style.display = showRow ? '' : 'none';
+      if (showRow) hasVisibleRows = true;
+    });
+
+    if (modVal && !hasVisibleRows) showCard = false;
+    card.style.display = showCard ? '' : 'none';
+  });
+}
+
+function filterCards(type, btn) {
+  if (type === 'all') {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  } else {
+    document.querySelector('.filter-btn[data-type="all"]').classList.remove('active');
+    btn.classList.toggle('active');
+    if (!document.querySelectorAll('.filter-btn.active').length) {
+      document.querySelector('.filter-btn[data-type="all"]').classList.add('active');
+    }
+  }
+  applyFilters();
+}
+
+function clearAllFilters() {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.filter-btn[data-type="all"]').classList.add('active');
+  document.getElementById('filterPsi').value = '';
+  document.getElementById('filterMod').value = '';
+  applyFilters();
+}
+
+// ═══════════════════════════════════════════════
+// MISC
+// ═══════════════════════════════════════════════
+function resetDashboard() {
+  document.getElementById('uploadSection').style.display = '';
+  document.getElementById('dashboardSection').style.display = 'none';
+  document.getElementById('headerBadges').innerHTML = '';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileLabel').textContent = 'Ningún archivo seleccionado';
+  document.getElementById('alertContainer').innerHTML = '';
+  psiData=[]; chartRecords=[]; kpis={};
+}
+
+function showAlert(type, msg) {
+  document.getElementById('alertContainer').innerHTML = `<div class="alert-msg alert-${type}"><i class="bi bi-exclamation-triangle-fill me-2"></i>${msg}</div>`;
+}
+
+// Drag & drop
+const dropZone = document.getElementById('dropZone');
+['dragenter','dragover'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.add('drag-over'); }));
+['dragleave','drop'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.remove('drag-over'); }));
+dropZone.addEventListener('drop', ev => {
+  const fi = document.getElementById('fileInput');
+  fi.files = ev.dataTransfer.files;
+  handleFileSelect(fi);
+});
+</script>
+</body>
+</html>
