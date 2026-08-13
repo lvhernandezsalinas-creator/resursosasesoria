@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Cupos CREA</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F7F6F2;
+    --surface: #FFFFFF;
+    --surface2: #F0EFE9;
+    --border: rgba(0,0,0,0.08);
+    --border2: rgba(0,0,0,0.14);
+    --text: #1A1A18;
+    --text2: #6B6B67;
+    --text3: #A0A09C;
+    --blue: #1D5FD4;
+    --blue-bg: #EBF1FD;
+    --green: #1A7A52;
+    --green-bg: #E4F5EE;
+    --amber: #9A5E00;
+    --amber-bg: #FDF3E0;
+    --red: #B52B2B;
+    --red-bg: #FCEAEA;
+    --purple: #5A3FC0;
+    --purple-bg: #EEEAFC;
+    --pink: #A0285A;
+    --pink-bg: #FCEAF2;
+    --teal: #0E7070;
+    --teal-bg: #E2F5F5;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 32px 24px;
+  }
+
+  .page-header {
+    margin-bottom: 28px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+  .page-subtitle { font-size: 13px; color: var(--text2); margin-top: 3px; }
+
+  .week-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 8px 14px;
+  }
+  .week-label { font-size: 12px; color: var(--text2); white-space: nowrap; }
+  .week-input {
+    width: 48px;
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    font-weight: 500;
+    text-align: center;
+    border: none;
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 4px 6px;
+    color: var(--text);
+  }
+  .week-input:focus { outline: 2px solid var(--blue); }
+  .week-pct { font-size: 12px; color: var(--blue); font-weight: 500; white-space: nowrap; }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .metric-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .metric-value { font-size: 24px; font-weight: 600; font-family: 'DM Mono', monospace; }
+  .metric-value.success { color: var(--green); }
+  .metric-value.warning { color: var(--amber); }
+  .metric-value.danger  { color: var(--red); }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+  .filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    padding: 6px 14px;
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    background: var(--surface);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { border-color: var(--text3); color: var(--text); }
+  .filter-btn.active {
+    background: var(--text);
+    color: #fff;
+    border-color: var(--text);
+  }
+
+  .psico-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: box-shadow 0.15s;
+  }
+  .psico-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+  .psico-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid transparent;
+    transition: background 0.1s;
+  }
+  .psico-header:hover { background: var(--surface2); }
+  .psico-header.open { border-bottom-color: var(--border); }
+
+  .avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600;
+    flex-shrink: 0;
+  }
+  .psico-info { flex: 1; min-width: 0; }
+  .psico-name { font-size: 14px; font-weight: 600; }
+  .psico-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .badge {
+    font-size: 11px; font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .badge-done  { background: var(--green-bg);  color: var(--green); }
+  .badge-alert { background: var(--red-bg);    color: var(--red); }
+  .badge-warn  { background: var(--amber-bg);  color: var(--amber); }
+  .badge-ok    { background: var(--blue-bg);   color: var(--blue); }
+
+  .chevron { font-size: 18px; color: var(--text3); transition: transform 0.2s; flex-shrink: 0; }
+  .chevron.open { transform: rotate(180deg); }
+
+  .psico-body { padding: 0 18px 14px; }
+
+  .modal-table { width: 100%; border-collapse: collapse; }
+  .modal-table th {
+    font-size: 10px; font-weight: 600; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 10px 6px 6px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-table th:first-child { text-align: left; padding-left: 0; }
+  .modal-table td {
+    padding: 10px 6px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    font-size: 13px;
+    text-align: center;
+  }
+  .modal-table td:first-child { text-align: left; padding-left: 0; }
+  .modal-table tr:last-child td { border-bottom: none; }
+
+  .mod-pill {
+    display: inline-block;
+    font-size: 11px; font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-bottom: 3px;
+  }
+  .mod-tipo { font-size: 11px; color: var(--text3); }
+  .mod-nota { font-size: 11px; color: var(--text3); font-style: italic; }
+
+  .progress-wrap {
+    height: 5px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 5px;
+    width: 100%;
+  }
+  .progress-bar { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+
+  .falta-text { font-size: 11px; margin-top: 3px; color: var(--text3); }
+  .falta-text.done { color: var(--green); font-weight: 500; }
+  .falta-text.behind { color: var(--red); font-weight: 500; }
+  .falta-text.on-track { color: var(--blue); font-weight: 500; }
+
+  .num-input {
+    width: 54px; padding: 5px 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px; font-weight: 500;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    background: var(--surface2);
+    color: var(--text);
+    text-align: center;
+    transition: border-color 0.15s;
+  }
+  .num-input:focus { outline: none; border-color: var(--blue); background: #fff; }
+
+  .pct-value { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; }
+
+  .hab-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px; font-weight: 500;
+    padding: 4px 10px;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    background: var(--surface2);
+    color: var(--text2);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .hab-btn:hover:not(.bloqueado) { border-color: var(--green); color: var(--green); }
+  .hab-btn.habilitado { background: var(--green-bg); color: var(--green); border-color: #9FE1CB; }
+  .hab-btn.bloqueado { opacity: 0.4; cursor: not-allowed; }
+
+  .esperado-row {
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 2px;
+  }
+
+  .footer {
+    margin-top: 32px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text3);
+  }
+
+  @media (max-width: 700px) {
+    .modal-table th:nth-child(4),
+    .modal-table td:nth-child(4) { display: none; }
+    body { padding: 16px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Seguimiento de cupos — CREA</div>
+    <div class="page-subtitle">Ingresa los casos activos y cerrados para ver el avance frente a la meta</div>
+  </div>
+  <div class="week-control">
+    <span class="week-label">Semana actual</span>
+    <input class="week-input" type="number" id="semana" min="1" max="16" value="12" oninput="onSemanaChange()">
+    <span class="week-label">de 16</span>
+    <span class="week-pct" id="week-pct-label">· 75% transcurrido</span>
+  </div>
+</div>
+
+<div class="summary-grid" id="summary"></div>
+
+<div class="filters">
+  <button class="filter-btn active" onclick="setFilter('todos',this)">Todas</button>
+  <button class="filter-btn" onclick="setFilter('alerta',this)">Con alerta</button>
+  <button class="filter-btn" onclick="setFilter('adelante',this)">Adelantadas</button>
+  <button class="filter-btn" onclick="setFilter('disponible',this)">Con cupos disponibles</button>
+</div>
+
+<div id="cards-container"></div>
+
+<div class="footer">Dashboard CREA · Generado con Claude · <span id="fecha"></span></div>
+
+<script>
+document.getElementById('fecha').textContent = new Date().toLocaleDateString('es-CO', {year:'numeric',month:'long',day:'numeric'});
+
+const MOD_COLORS = {
+  'AAP Psicopedagógica':                     { bg:'#EBF1FD', color:'#1D5FD4' },
+  'AAP Periodo de Prueba':                   { bg:'#FDF3E0', color:'#9A5E00' },
+  'AAP Semestre de Recuperación Académica':  { bg:'#FCEAEA', color:'#B52B2B' },
+  'AAP RAISE':                               { bg:'#FCEAF2', color:'#A0285A' },
+  'Asesoría académica Explora tu carrera':   { bg:'#E4F5EE', color:'#1A7A52' },
+};
+
+const AVATARS = [
+  { bg:'#EEEAFC', color:'#5A3FC0' },
+  { bg:'#E4F5EE', color:'#1A7A52' },
+  { bg:'#FCEAF2', color:'#A0285A' },
+  { bg:'#EBF1FD', color:'#1D5FD4' },
+  { bg:'#FDF3E0', color:'#9A5E00' },
+  { bg:'#FCEAEA', color:'#B52B2B' },
+  { bg:'#E2F5F5', color:'#0E7070' },
+];
+
+const psicoData = [
+  {
+    id: 1136, nombre: "Maria Juliana Cortes Briceño", metaEstudiantes: 70,
+    modalidades: [
+      { nombre:"AAP Psicopedagógica",                      meta:17, tipo:"Variable", nota:"15 casos primera mitad, 15 segunda" },
+      { nombre:"AAP Periodo de Prueba",                    meta:49, tipo:"Fijo",     nota:"Cada 15 días" },
+      { nombre:"AAP Semestre de Recuperación Académica",   meta:4,  tipo:"Fijo",     nota:"Cada 8 días" },
+    ]
+  },
+  {
+    id: 6124, nombre: "Lizeth Viviana Hernandez", metaEstudiantes: 50,
+    modalidades: [
+      { nombre:"AAP RAISE",                                meta:20, tipo:"Fijo",     nota:"" },
+      { nombre:"AAP Psicopedagógica",                      meta:18, tipo:"Variable", nota:"15 casos primera mitad, 15 segunda" },
+      { nombre:"AAP Periodo de Prueba",                    meta:28, tipo:"Fijo",     nota:"Cada 15 días" },
+      { nombre:"AAP Semestre de Recuperación Académica",   meta:4,  tipo:"Fijo",     nota:"Cada 8 días" },
+    ]
+  },
+  {
+    id: 11046, nombre: "Nubia Liboria Abella Cadena", metaEstudiantes: 124,
+    modalidades: [
+      { nombre:"AAP Psicopedagógica",                      meta:70, tipo:"Variable", nota:"40 casos primera mitad, 40 segunda" },
+      { nombre:"AAP Periodo de Prueba",                    meta:50, tipo:"Fijo",     nota:"Cada 15 días" },
+      { nombre:"AAP Semestre de Recuperación Académica",   meta:4,  tipo:"Fijo",     nota:"Cada 8 días" },
+    ]
+  },
+  {
+    id: 9594, nombre: "Monica Patricia Venegas Diaz", metaEstudiantes: 168,
+    modalidades: [
+      { nombre:"AAP Psicopedagógica",                      meta:89, tipo:"Variable", nota:"Cada 15 días" },
+      { nombre:"Asesoría académica Explora tu carrera",    meta:75, tipo:"Variable", nota:"" },
+      { nombre:"AAP Semestre de Recuperación Académica",   meta:4,  tipo:"Fijo",     nota:"" },
+    ]
+  },
+  {
+    id: 133025, nombre: "Victoria Jácome", metaEstudiantes: 70,
+    modalidades: [
+      { nombre:"AAP RAISE",                                meta:15, tipo:"Fijo",     nota:"" },
+      { nombre:"AAP Psicopedagógica",                      meta:40, tipo:"Variable", nota:"" },
+      { nombre:"AAP Periodo de Prueba",                    meta:11, tipo:"Fijo",     nota:"" },
+      { nombre:"AAP Semestre de Recuperación Académica",   meta:4,  tipo:"Fijo",     nota:"" },
+    ]
+  },
+  {
+    id: 199895, nombre: "Angelica Alarcón", metaEstudiantes: 70,
+    modalidades: [
+      { nombre:"AAP Psicopedagógica",                      meta:20, tipo:"Variable", nota:"" },
+      { nombre:"Asesoría académica Explora tu carrera",    meta:50, tipo:"Variable", nota:"" },
+    ]
+  },
+  {
+    id: 160434, nombre: "Christopher Quintero", metaEstudiantes: 70,
+    modalidades: [
+      { nombre:"AAP Psicopedagógica", meta:70, tipo:"Variable", nota:"" },
+    ]
+  },
+];
+
+let state = {};
+let openCards = {};
+let filter = 'todos';
+let semana = 12;
+
+psicoData.forEach(p => {
+  openCards[p.id] = true;
+  p.modalidades.forEach((m, i) => {
+    state[`${p.id}_${i}`] = { activos:0, cerradosAtendidos:0, cerradosSinAtencion:0, habilitado:false };
+  });
+});
+
+function initials(n) { return n.split(' ').slice(0,2).map(x=>x[0]).join('').toUpperCase(); }
+
+function getTotal(key) {
+  const s = state[key];
+  return s.activos + s.cerradosAtendidos;
+}
+
+function getEsperado(m) {
+  if (m.meta === 0) return 0;
+  if (m.tipo === 'Fijo') return m.meta;
+  // Variable: 2 ciclos en 16 semanas
+  // Semana 1-8: primera mitad, semana 9-16: segunda mitad
+  const mitad = m.meta / 2;
+  if (semana <= 8) {
+    return Math.round(mitad * (semana / 8));
+  } else {
+    return Math.round(mitad + mitad * ((semana - 8) / 8));
+  }
+}
+
+function getPct(key, meta) {
+  if (meta === 0) return 0;
+  return Math.min(100, Math.round((getTotal(key) / meta) * 100));
+}
+
+function getBarColor(pct, esperadoPct) {
+  if (pct >= 100) return '#1A7A52';
+  if (pct >= esperadoPct) return '#1D5FD4';
+  if (pct >= esperadoPct * 0.8) return '#E8A020';
+  return '#C0392B';
+}
+
+function getFaltaHtml(key, m) {
+  if (m.meta === 0) return '';
+  const total = getTotal(key);
+  const esperado = getEsperado(m);
+  const falta = m.meta - total;
+  const diff = total - esperado;
+
+  if (falta <= 0) return `<div class="falta-text done">✓ Meta alcanzada${falta < 0 ? ' (+'+Math.abs(falta)+')' : ''}</div>`;
+
+  let ritmoHtml = '';
+  if (diff > 0) ritmoHtml = `<span class="falta-text on-track"> · +${diff} sobre lo esperado</span>`;
+  else if (diff < 0) ritmoHtml = `<span class="falta-text behind"> · ${diff} bajo lo esperado</span>`;
+  else ritmoHtml = `<span class="falta-text on-track"> · al día</span>`;
+
+  return `<div class="falta-text">Faltan ${falta} para la meta${ritmoHtml}</div>`;
+}
+
+function canHabilitar(key, meta) {
+  return meta > 0 && getTotal(key) < meta;
+}
+
+function getPsicoStatus(psico) {
+  let hasAlert = false, allDone = true, anyAhead = false;
+  psico.modalidades.forEach((m, i) => {
+    if (m.meta === 0) return;
+    const key = `${psico.id}_${i}`;
+    const total = getTotal(key);
+    const esperado = getEsperado(m);
+    const pct = getPct(key, m.meta);
+    if (pct < 100) allDone = false;
+    if (total < esperado * 0.8) hasAlert = true;
+    if (total > esperado) anyAhead = true;
+  });
+  if (allDone)   return 'done';
+  if (hasAlert)  return 'alert';
+  if (anyAhead)  return 'ahead';
+  return 'progress';
+}
+
+function onSemanaChange() {
+  semana = Math.min(16, Math.max(1, parseInt(document.getElementById('semana').value)||1));
+  const pct = Math.round((semana / 16) * 100);
+  document.getElementById('week-pct-label').textContent = `· ${pct}% transcurrido`;
+  render();
+}
+
+function updateSummary() {
+  let totalMeta = 0, totalActual = 0;
+  psicoData.forEach(p => p.modalidades.forEach((m, i) => {
+    totalMeta += m.meta;
+    totalActual += getTotal(`${p.id}_${i}`);
+  }));
+  const pct = totalMeta > 0 ? Math.round((totalActual / totalMeta) * 100) : 0;
+  const alertas   = psicoData.filter(p => getPsicoStatus(p) === 'alert').length;
+  const completas = psicoData.filter(p => getPsicoStatus(p) === 'done').length;
+  const hab       = Object.values(state).filter(s => s.habilitado).length;
+  const totalEst  = psicoData.reduce((a,p) => a + p.metaEstudiantes, 0);
+
+  let totalEsperado = 0;
+  psicoData.forEach(p => p.modalidades.forEach((m, i) => { totalEsperado += getEsperado(m); }));
+  const ritmo = totalEsperado > 0 ? Math.round((totalActual / totalEsperado) * 100) : 0;
+
+  document.getElementById('summary').innerHTML = `
+    <div class="metric">
+      <div class="metric-label">Avance global</div>
+      <div class="metric-value ${pct>=80?'success':pct>=50?'warning':'danger'}">${pct}%</div>
+      <div class="metric-sub">de la meta del semestre</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Atenciones / Meta</div>
+      <div class="metric-value">${totalActual}<span style="font-size:14px;color:var(--text3)"> / ${totalMeta}</span></div>
+      <div class="metric-sub">casos acumulados</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Ritmo sem. ${semana}</div>
+      <div class="metric-value ${ritmo>=100?'success':ritmo>=80?'warning':'danger'}">${ritmo}%</div>
+      <div class="metric-sub">vs esperado a esta semana</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Estudiantes meta</div>
+      <div class="metric-value">${totalEst}</div>
+      <div class="metric-sub">total equipo</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Alertas</div>
+      <div class="metric-value ${alertas>0?'danger':''}">${alertas}</div>
+      <div class="metric-sub">psicólogas con retraso</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Metas alcanzadas</div>
+      <div class="metric-value ${completas>0?'success':''}">${completas}<span style="font-size:14px;color:var(--text3)"> / ${psicoData.length}</span></div>
+      <div class="metric-sub">del equipo completas</div>
+    </div>
+  `;
+}
+
+function setFilter(f, btn) {
+  filter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function toggleCard(id) { openCards[id] = !openCards[id]; render(); }
+
+function updateField(key, field, val) {
+  state[key][field] = Math.max(0, parseInt(val)||0);
+  render();
+}
+
+function toggleHabilitar(key, meta) {
+  if (!canHabilitar(key, meta)) return;
+  state[key].habilitado = !state[key].habilitado;
+  render();
+}
+
+function render() {
+  updateSummary();
+
+  let filtered = psicoData;
+  if (filter === 'alerta')     filtered = psicoData.filter(p => getPsicoStatus(p) === 'alert');
+  if (filter === 'adelante')   filtered = psicoData.filter(p => getPsicoStatus(p) === 'ahead' || getPsicoStatus(p) === 'done');
+  if (filter === 'disponible') filtered = psicoData.filter(p => p.modalidades.some((m,i) => canHabilitar(`${p.id}_${i}`, m.meta)));
+
+  document.getElementById('cards-container').innerHTML = filtered.map((psico, ci) => {
+    const av    = AVATARS[ci % AVATARS.length];
+    const status = getPsicoStatus(psico);
+    const isOpen = openCards[psico.id];
+
+    const badgeHtml =
+      status === 'done'     ? `<span class="badge badge-done">Meta alcanzada</span>` :
+      status === 'alert'    ? `<span class="badge badge-alert">Requiere atención</span>` :
+      status === 'ahead'    ? `<span class="badge badge-ok">Adelantada</span>` :
+                              `<span class="badge badge-warn">En progreso</span>`;
+
+    const rows = psico.modalidades.map((m, i) => {
+      const key   = `${psico.id}_${i}`;
+      const s     = state[key];
+      const pct   = getPct(key, m.meta);
+      const esp   = getEsperado(m);
+      const espPct = m.meta > 0 ? Math.round((esp / m.meta) * 100) : 0;
+      const bar   = getBarColor(pct, espPct);
+      const puede = canHabilitar(key, m.meta);
+      const mc    = MOD_COLORS[m.nombre] || { bg:'#F0EFE9', color:'#6B6B67' };
+
+      const habBtn = m.meta > 0
+        ? `<button class="hab-btn ${s.habilitado?'habilitado':''} ${!puede?'bloqueado':''}"
+             onclick="toggleHabilitar('${key}',${m.meta})">${s.habilitado?'✓ Habilitado':'Habilitar'}</button>`
+        : `<span style="font-size:11px;color:var(--text3)">Sin cupo</span>`;
+
+      return `<tr>
+        <td>
+          <span class="mod-pill" style="background:${mc.bg};color:${mc.color}">${m.nombre}</span>
+          <div class="mod-tipo">${m.tipo}${m.nota?' · '+m.nota:''}</div>
+          ${m.meta>0?`
+          <div class="progress-wrap">
+            <div class="progress-bar" style="width:${pct}%;background:${bar}"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+            ${getFaltaHtml(key, m)}
+            ${m.tipo==='Variable'?`<span style="font-size:10px;color:var(--text3)">Esperado: ${esp}</span>`:''}
+          </div>`:''}
+        </td>
+        <td><span style="font-weight:600;font-family:'DM Mono',monospace">${m.meta}</span></td>
+        <td><input class="num-input" type="number" min="0" value="${s.activos}" oninput="updateField('${key}','activos',this.value)"></td>
+        <td><input class="num-input" type="number" min="0" value="${s.cerradosAtendidos}" oninput="updateField('${key}','cerradosAtendidos',this.value)"></td>
+        <td style="opacity:0.6"><input class="num-input" type="number" min="0" value="${s.cerradosSinAtencion}" oninput="updateField('${key}','cerradosSinAtencion',this.value)"></td>
+        <td><span class="pct-value" style="color:${bar}">${pct}%</span></td>
+        <td>${habBtn}</td>
+      </tr>`;
+    }).join('');
+
+    return `
+    <div class="psico-card">
+      <div class="psico-header ${isOpen?'open':''}" onclick="toggleCard(${psico.id})">
+        <div class="avatar" style="background:${av.bg};color:${av.color}">${initials(psico.nombre)}</div>
+        <div class="psico-info">
+          <div class="psico-name">${psico.nombre}</div>
+          <div class="psico-meta">ID ${psico.id} · Meta: ${psico.metaEstudiantes} estudiantes · ${psico.modalidades.length} modalidad${psico.modalidades.length>1?'es':''}</div>
+        </div>
+        ${badgeHtml}
+        <span class="chevron ${isOpen?'open':''}">&#8964;</span>
+      </div>
+      ${isOpen?`
+      <div class="psico-body">
+        <p style="font-size:11px;color:var(--text3);font-style:italic;padding:8px 0 4px;">Activos + cerrados atendidos cuentan para la meta. Los cerrados sin atención solo se registran.</p>
+        <table class="modal-table">
+          <thead>
+            <tr>
+              <th style="text-align:left">Modalidad</th>
+              <th>Meta</th>
+              <th>Activos</th>
+              <th>Cerrados at.</th>
+              <th style="opacity:0.5">Cerr. sin at.*</th>
+              <th>Avance</th>
+              <th>Cupos</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`:''}
+    </div>`;
+  }).join('');
+}
+
+render();
+</script>
+</body>
+</html>
